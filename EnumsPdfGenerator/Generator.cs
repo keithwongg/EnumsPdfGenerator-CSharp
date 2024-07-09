@@ -1,4 +1,5 @@
 ﻿
+using EnumsPdfGenerator.ExtensionMethods;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -12,59 +13,54 @@ namespace EnumsPdfGenerator;
 
 public class Generator
 {
-    public Generator()
-    {
-        
-    }
 
-    public async Task GenerateFromLocalEntites()
+    private string _outputPath = string.Empty;
+    private string _outputDir = $"C:\\Users\\User\\Downloads";
+    private string _defaultPdfFileName = "EnumsCheatsheet.pdf";
+    private string _defaultHtmlFileName = "EnumsCheatsheet.html";
+    public Generator(string outputPath = "")
     {
-        var q = from t in Assembly.GetExecutingAssembly().GetTypes()
-                where t.IsEnum
-                select t;
-        StringBuilder contentsBuilder = new StringBuilder();
-        foreach (var t in q)
+        if (string.IsNullOrWhiteSpace(outputPath))
         {
-            contentsBuilder.Append($"<div id=\"{t.Name.Trim().ToLower()}\">");
-            Console.WriteLine($"Namespace: {t.Namespace}");
-            Console.WriteLine($"Obj: {t}");
-            contentsBuilder.Append($"<h1>{t.Namespace}</h1>");
-            contentsBuilder.Append($"<h2>{t.Name}</h2>");
-
-            var testEnum = Activator.CreateInstance(t);
-            Type enumType = testEnum.GetType();
-            var test = enumType.GetEnumValues();
-            foreach (var v in test)
-            {
-                Console.WriteLine($"value: {v}");
-                contentsBuilder.Append($"<p>{t}</p>");
-            }
-            contentsBuilder.Append("</div>");
-
+            _outputPath = Path.Combine(_outputDir, _defaultPdfFileName);
+            return;
         }
-        var finalTemplate = GenerateTemplate( contentsBuilder.ToString() );
-        //string directory = "C:\\Downloads";
-        //using (StreamWriter outputFile = new StreamWriter(Path.Combine(directory, "test.html")))
-        //{
-        //    outputFile.Write(finalTemplate);
-        //}
-        Console.WriteLine(finalTemplate);
-        
-        
-        
-        // take the string html and generate pdf
-        //Create a pdf document.
-   
-        SelectPdf.HtmlToPdf converter = new SelectPdf.HtmlToPdf();
-        SelectPdf.PdfDocument doc = converter.ConvertHtmlString(finalTemplate);
-        doc.Save("C:\\Users\\User\\Downloads\\test.pdf");
-        doc.Close();
-
+        _outputPath = outputPath;
     }
 
+    public void GenerateFromLocalEntites()
+    {
+        var entities = LoadEntitiesFromAssembly();
+        var contents = GenerateHtmlBody(entities);
+        var finalTemplate = GetFinalizedHtml(contents);
+        SaveHtml(finalTemplate);
+        SavePdf(finalTemplate);
+    }
 
+    private IEnumerable<Type>? LoadEntitiesFromAssembly()
+    {
+        return from item in Assembly.GetExecutingAssembly().GetTypes()
+               where item.IsEnum
+               select item;
+    }
 
-    private string GenerateTemplate(string contents)
+    private string GenerateHtmlBody(IEnumerable<Type>? entities)
+    {
+        StringBuilder contentsBuilder = new StringBuilder();
+        foreach (var e in entities)
+        {
+            if (e == null)
+            {
+                throw new Exception("Entity not found.");
+            }
+            contentsBuilder.OpenDivContainer(e);
+            contentsBuilder.AddEachEnumValue(e);
+            contentsBuilder.CloseDivContainer();
+        }
+        return contentsBuilder.ToString();
+    }
+
+    private string GetFinalizedHtml(string contents)
     {
         return $@"
             <!DOCTYPE html>
@@ -75,9 +71,31 @@ public class Generator
                 <title>Document</title>
             </head>
             <body>
+                <div style=""display: flex; flex-direction: row; flex-wrap: wrap;"">
                     {contents}
+                </div>
             </body>
             </html>
         ";
+    }
+
+    private void SaveHtml(string htmlTemplate)
+    {
+        using (StreamWriter outputFile = new StreamWriter(Path.Combine(_outputDir, _defaultHtmlFileName)))
+        {
+            outputFile.Write(htmlTemplate);
+        }
+        Console.WriteLine(htmlTemplate);
+    }
+
+    private void SavePdf(string htmlTemplate)
+    {
+        /*
+         * Uses SelectPdf community edition: https://selectpdf.com/community-edition/
+         */
+        SelectPdf.HtmlToPdf converter = new SelectPdf.HtmlToPdf();
+        SelectPdf.PdfDocument doc = converter.ConvertHtmlString(htmlTemplate);
+        doc.Save(_outputPath);
+        doc.Close();
     }
 }
