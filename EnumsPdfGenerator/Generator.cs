@@ -92,6 +92,7 @@ public class Generator
     {
         /*
          * Uses SelectPdf community edition: https://selectpdf.com/community-edition/
+         * Limit: 5 pages
          */
         SelectPdf.HtmlToPdf converter = new SelectPdf.HtmlToPdf();
         SelectPdf.PdfDocument doc = converter.ConvertHtmlString(htmlTemplate);
