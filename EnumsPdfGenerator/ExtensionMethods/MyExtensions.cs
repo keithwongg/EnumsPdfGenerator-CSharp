@@ -12,9 +12,18 @@ public static class MyExtensions
 {
     public static void OpenDivContainer(this StringBuilder sb, Type e)
     {
-        sb.Append($"<div id=\"{e.Name.Trim().ToLower()}\" style=\"border-style: solid; padding: 8px; margin: 4px;\">");
+        string itemId = e.Name.Trim().ToLower();
+        sb.Append($@"<div class=""enum-container"" id=""{itemId}-box"">");
         //sb.Append($"<h1>{e.Namespace}</h1>");
         sb.Append($"<h3>{e.Name}</h3>");
+        string copybox = $@"
+            <small class=""copy-alert"" id=""{itemId}-alert"">text copied</small>
+            <div class=""overall-container"">
+                <input id=""{itemId}-input"" placeholder=""e.g aa.Name"" onkeydown=copySqlScriptToClipboardOnEnter(event)>
+                <button id=""{itemId}-btn"" onClick=copySqlScriptToClipboard(this.id)>get</button>
+            </div>
+        ";
+        sb.Append(copybox);
     }
 
     public static void AddEachEnumValue(this StringBuilder sb, Type e)
