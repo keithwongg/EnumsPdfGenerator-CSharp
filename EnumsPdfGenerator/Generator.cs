@@ -63,6 +63,11 @@ public class Generator
     private string GetFinalizedHtml(string contents)
     {
         var style = @"
+        html{
+            border-style: solid;
+            border-width: 4px;
+            border-color: transparent;
+        }
         .overall-container{
             display: flex;
             flex-direction: row;
@@ -84,11 +89,12 @@ public class Generator
         }
         ";
         var script = @"
+        var CHAINED_SCRIPT_LIST = [];
         function copySqlScriptToClipboard(id) {
             let itemId = id.split('-')[0]
             let enumsToGenerate = getMappedObjFromId(itemId)
             let textToCopy = formatTextToCopy(itemId, enumsToGenerate)
-            navigator.clipboard.writeText(textToCopy)
+            copyTextToClipBoard(textToCopy)
             console.log(textToCopy)
             hideIdAlert(itemId, 5000)
         }
@@ -99,19 +105,20 @@ public class Generator
             let pElements = [...document.getElementById(`${id}-box`).getElementsByTagName(""p"")]
             let mappedObj = new Map()
             pElements.forEach((e) => {
-                let displayName = getTextWithinRoundedBrackets(e)
+                let displayName = getTextWithinBrackets(e)
                 let enumNumber = getTextAfterEqualSign(e)
-                if (hasValue(displayName))
-                {
-                    mappedObj.set(displayName, enumNumber)
-                }
+                mappedObj.set(displayName, enumNumber)
             })
             return mappedObj
         }
 
-        function getTextWithinRoundedBrackets(element)
+        function getTextWithinBrackets(element)
         {
-            return element.innerText.match(/\(([^)]+)\)/)[1]
+            let text = element.innerText
+            let captureWithinSquareBrackets = text.match(/(?<=\[)(.*?)(?=\])/)
+            return (captureWithinSquareBrackets === null)
+                ? text.split('=')[0].trim()
+                : captureWithinSquareBrackets[1];
         }
 
         function getTextAfterEqualSign(element)
@@ -119,26 +126,32 @@ public class Generator
             return element.innerText.split('=')[1].trim()
         }
 
-        function hasValue(displayName)
-        {
-            return displayName.trim() !== '-'
-        }
-
         function formatTextToCopy(id, enumsToGenerate)
         {
             let placeholderName = getSqlColumnNameFromId(id)
             let text = ""case ""
             for (let [key, value] of enumsToGenerate){
-                text += `when (${placeholderName} = ${value}) then '${key}' \n \t`
+                text += `when (${placeholderName} = ${value}) then '${key}'\n\t\t`
             }
-            let finalText = text.slice(0, -2) // don't want the last line to be indented
-            finalText += `else 'not a value' end as ${placeholderName.split('.')[1]}`
-            return finalText
+            let newColName = placeholderName.split('.')[1] || getTitleDisplayName(id)
+            text += `else '-' end as ${newColName}`
+            return text
         }
 
         function getSqlColumnNameFromId(id)
         {
             return document.getElementById(`${id}-input`).value.trim() || ""sqlColumnName""
+        }
+        
+        function copyTextToClipBoard(textToCopy)
+        {
+            if (isChained())
+            {
+                CHAINED_SCRIPT_LIST.push(textToCopy);
+                navigator.clipboard.writeText(CHAINED_SCRIPT_LIST.join(`\n\t,`))
+                return
+            }
+            navigator.clipboard.writeText(textToCopy)
         }
 
         function hideIdAlert(id, duration)
@@ -155,6 +168,34 @@ public class Generator
                 copySqlScriptToClipboard(event.target.id)
             }
         }
+
+        // toggle radio buttons
+        function toggleRadio(event)
+        {
+            if (event.target.id === ""single-radio"")
+            {
+                document.getElementById(""chained-radio"").checked = """"
+                CHAINED_SCRIPT_LIST = [];
+                document.getElementsByTagName(""html"")[0].style.setProperty(""border-color"", ""transparent"")
+                return
+            }
+            if (event.target.id === ""chained-radio"")
+            {
+                document.getElementById(""single-radio"").checked = """"
+                document.getElementsByTagName(""html"")[0].style.setProperty(""border-color"", ""red"")
+                return
+            }
+        }
+        
+        function isChained()
+        {
+            return document.getElementById(""chained-radio"").checked
+        }
+        
+        function getTitleDisplayName(id)
+        {
+            return document.getElementById(`${id}-box`).getElementsByTagName(""h3"")[0].innerText
+        }
         ";
         return $@"
             <!DOCTYPE html>
@@ -168,12 +209,16 @@ public class Generator
             </head>
             <body>
                 <p>If you want to copy enums out as SQL Script, insert the col name and click on the 'get' button. E.g aa.Name</p>
-                <div class=""radio-container"">
+                <div class=""radio-container"" id=""rad-container"">
                     <p>Single = Copy 1 at a time.     Chained = Add to current copy on click. </p>
-                    <input type=""radio"" id=""single-radio"">
-                    <label for=""single-radio"">Single</label><br>
-                    <input type=""radio"" id=""chained-radio"">
-                    <label for=""chained-radio"">Chained</label><br>
+                    <label for=""single-radio"">
+                        <input type=""radio"" name=""rad"" id=""single-radio"" checked=""checked"" onclick=toggleRadio(event)>
+                        Single
+                    </label>
+                    <label for=""chained-radio"">
+                        <input type=""radio"" name=""rad"" id=""chained-radio"" onclick=toggleRadio(event)>
+                        Chained
+                    </label><br>
                 </div>
                 <div class=""overall-container"">
                     {contents}

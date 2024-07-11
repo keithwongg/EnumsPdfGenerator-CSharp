@@ -16,6 +16,7 @@ public static class MyExtensions
         sb.Append($@"<div class=""enum-container"" id=""{itemId}-box"">");
         //sb.Append($"<h1>{e.Namespace}</h1>");
         sb.Append($"<h3>{e.Name}</h3>");
+
         string copybox = $@"
             <small class=""copy-alert"" id=""{itemId}-alert"">text copied</small>
             <div class=""overall-container"">
@@ -38,13 +39,16 @@ public static class MyExtensions
         foreach (var v in values)
         {
 
-            string displayName = v.GetType().GetMember(v.ToString())
+            string name = v.GetType().GetMember(v.ToString())
                 .First()
                 .GetCustomAttribute<DisplayAttribute>()
-                ?.Name ?? " - ";
+                ?.Name ?? string.Empty;
+            string displayName = (string.IsNullOrWhiteSpace(name))
+                ? name
+                : $"[{name}]";
 
             int intValue = (int)v;
-            sb.Append($"<p>{v} ({displayName}) = {intValue} </p>");
+            sb.Append($"<p>{v} {displayName} = {intValue} </p>");
         }
     }
 
