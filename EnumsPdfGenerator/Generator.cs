@@ -105,19 +105,20 @@ public class Generator
             let pElements = [...document.getElementById(`${id}-box`).getElementsByTagName(""p"")]
             let mappedObj = new Map()
             pElements.forEach((e) => {
-                let displayName = getTextWithinBrackets(e)
+                let displayName = getTextBeforeEqualSign(e)
                 let enumNumber = getTextAfterEqualSign(e)
                 mappedObj.set(displayName, enumNumber)
             })
             return mappedObj
         }
 
-        function getTextWithinBrackets(element)
+        function getTextBeforeEqualSign(element)
         {
             let text = element.innerText
+            let originalName = text.split('=')[0].trim();
             let captureWithinSquareBrackets = text.match(/(?<=\[)(.*?)(?=\])/)
             return (captureWithinSquareBrackets === null)
-                ? text.split('=')[0].trim()
+                ? originalName
                 : captureWithinSquareBrackets[1];
         }
 
