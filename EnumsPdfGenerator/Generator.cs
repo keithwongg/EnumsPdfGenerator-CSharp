@@ -28,13 +28,14 @@ public class Generator
         _outputPath = outputPath;
     }
 
-    public void GenerateFromLocalEntites()
+    public async Task GenerateFromLocalEntites()
     {
         var entities = LoadEntitiesFromAssembly();
         var contents = GenerateHtmlBody(entities);
         var finalTemplate = GetFinalizedHtml(contents);
-        SaveHtml(finalTemplate);
+        // SaveHtml(finalTemplate);
         //SavePdf(finalTemplate);
+        await SavePdfWithPlayWright(finalTemplate);
     }
 
     private IEnumerable<Type>? LoadEntitiesFromAssembly()
@@ -248,5 +249,12 @@ public class Generator
         SelectPdf.PdfDocument doc = converter.ConvertHtmlString(htmlTemplate);
         doc.Save(_outputPath);
         doc.Close();
+    }
+
+    private async Task SavePdfWithPlayWright(string html)
+    {
+        var pdfService = new PdfService();
+        byte[] bytes = await pdfService.CreateAsync(html);
+        await System.IO.File.WriteAllBytesAsync(_outputPath, bytes);
     }
 }
